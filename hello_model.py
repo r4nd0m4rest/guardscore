@@ -10,8 +10,9 @@ def main():
     parser.add_argument("--model", default="llama3.2", help="which model to use")
     args = parser.parse_args()
 
-    provider = OllamaProvider(model=args.model)   # create the provider
-    reply = provider.chat(args.prompt)            # use it — no ollama here
+    provider = OllamaProvider(model=args.model)
+    messages = [{"role": "user", "content": args.prompt}]   # caller builds the list
+    reply = provider.chat(messages)                          # hand over the finished list
     print(reply)
 
 
