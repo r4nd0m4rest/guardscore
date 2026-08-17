@@ -2,7 +2,7 @@
 
 A small, from-scratch red-team harness for probing the guardrails of large language models. `guardscore` fires a catalog of adversarial prompts at a target model, judges whether each guardrail held or broke, and (as it matures) scores the results into a repeatable mini-benchmark.
 
-> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–2 are shipped; detection and scoring are in progress. See the [Roadmap](#roadmap) for what's built and what's next.
+> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring); an agentic attack scenario and ecosystem comparison are next. See the [Roadmap](#roadmap) for what's built and what's next.
 
 ## Why this exists
 
@@ -12,20 +12,23 @@ Prompt injection and system-prompt leakage are among the most practical, least-u
 
 - Talks to a local model through **Ollama** via a pluggable provider interface.
 - Defines prompt-injection attacks as structured **data** (an attack catalog), not hardcoded logic.
-- Runs the full catalog against a target model and prints each response — currently focused on **system-prompt secret-leak** scenarios (plant a secret, instruct the model to protect it, attempt to extract it).
+- Runs the full catalog against a target model, focused on **system-prompt secret-leak** scenarios (plant a secret, instruct the model to protect it, attempt to extract it).
+- **Detects** whether each attack leaked the planted secret and labels every result `LEAKED` or `SAFE`.
+- **Scores** the run into an aggregate summary — total attacks, number leaked, and an overall leak rate.
 
-Detection (automatically labeling each result as `LEAKED` or `SAFE`) is the current work in progress.
+Making detection robust to obfuscated or encoded leaks (see [detection limits](#a-note-on-detection-limits)) and mapping results to industry taxonomies remain in progress.
 
 ## Architecture
 
-The design deliberately separates three concerns so the harness stays reusable as it grows:
+The design deliberately separates concerns so the harness stays reusable as it grows:
 
 | Component | File | Responsibility |
 |---|---|---|
 | **Provider** | `providers.py` | A generic interface for talking to any model. `Provider` defines the contract; `OllamaProvider` implements it. Swapping model backends changes one line, not the harness. |
 | **Attack catalog** | `attacks.py` | Attacks as data. An `Attack` dataclass holds each test case (name, system prompt to plant, attack prompt, planted secret); `CATALOG` is the list of them. Adding an attack means adding a data entry, not writing code. |
-| **Runner** | `run_attacks.py` | Iterates the catalog, builds the message list for each attack, sends it through the provider, and reports results. |
-| **Detector** *(in progress)* | `detectors.py` | Judges each reply — does the planted secret appear? — and labels it `LEAKED` or `SAFE`. |
+| **Detector** | `detectors.py` | Judges each reply — does the planted secret appear? — and labels it `LEAKED` or `SAFE`. |
+| **Result** | `results.py` | A `Result` dataclass that records the outcome of one attack (name, verdict, reply) so runs can be scored and, later, reported. |
+| **Runner** | `run_attacks.py` | Iterates the catalog, sends each attack through the provider, detects leaks, collects results, and prints per-attack verdicts plus an aggregate score. |
 
 ## Requirements
 
@@ -67,7 +70,11 @@ Run the full attack catalog against a model:
 python run_attacks.py
 ```
 
-Each attack in the catalog is fired in turn and its response printed, labeled by attack name.
+Each attack is fired in turn, its response printed and labeled `LEAKED` or `SAFE`, followed by an aggregate summary — for example:
+
+```
+Ran 2 attacks: 1 LEAKED, 1 SAFE (50.0% leak rate)
+```
 
 ## Roadmap
 
@@ -77,7 +84,8 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 1** — Pluggable provider interface (`Provider` / `OllamaProvider`)
 - [x] **Phase 2** — Attack catalog as data (`Attack` dataclass + runner)
 - [x] **Phase 3** — Detectors: automatically label each result `LEAKED` / `SAFE`
-- [ ] **Phase 4** — Scoring into a mini-benchmark; report mapped to OWASP LLM Top 10 and MITRE ATLAS
+- [x] **Phase 4** — Scoring into a mini-benchmark (aggregate leak rate)
+- [ ] **Phase 4+** — Persist results to file (JSON) and map findings to OWASP LLM Top 10 and MITRE ATLAS
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
 - [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
 
