@@ -76,7 +76,7 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 0** — Talk to a local model from a script
 - [x] **Phase 1** — Pluggable provider interface (`Provider` / `OllamaProvider`)
 - [x] **Phase 2** — Attack catalog as data (`Attack` dataclass + runner)
-- [ ] **Phase 3** — Detectors: automatically label each result `LEAKED` / `SAFE`
+- [x] **Phase 3** — Detectors: automatically label each result `LEAKED` / `SAFE`
 - [ ] **Phase 4** — Scoring into a mini-benchmark; report mapped to OWASP LLM Top 10 and MITRE ATLAS
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
 - [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
