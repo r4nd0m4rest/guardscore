@@ -1,0 +1,1 @@
+Team standup: shipped the parser, blocked on nothing, Kyle has PTO coming up

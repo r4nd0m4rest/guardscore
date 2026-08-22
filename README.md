@@ -2,7 +2,7 @@
 
 A small, from-scratch red-team harness for probing the guardrails of large language models. `guardscore` fires a catalog of adversarial prompts at a target model, judges whether each guardrail held or broke, and (as it matures) scores the results into a repeatable mini-benchmark.
 
-> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring); an agentic attack scenario and ecosystem comparison are next. See the [Roadmap](#roadmap) for what's built and what's next.
+> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — is now underway: the tool a model can be given, and a fixture file for it to read, are in place, with the model-driven tool-calling loop as the active work. See the [Roadmap](#roadmap) for what's built and what's next.
 
 ## Why this exists
 
@@ -87,6 +87,8 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 4** — Scoring into a mini-benchmark (aggregate leak rate)
 - [ ] **Phase 4+** — Persist results to file (JSON) and map findings to OWASP LLM Top 10 and MITRE ATLAS
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
+  - [ ] **5a** — Benign tool-calling loop: give the model a `read_file` tool and have it call the tool correctly on a legitimate request *(tool function and `notes.txt` fixture built; model-driven call is the active work)*
+  - [ ] **5b** — Weaponize it: an injected prompt drives an unauthorized tool call, with a detector that inspects the **action taken** rather than the text returned
 - [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
 
 ## A note on detection limits
