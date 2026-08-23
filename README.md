@@ -2,7 +2,7 @@
 
 A small, from-scratch red-team harness for probing the guardrails of large language models. `guardscore` fires a catalog of adversarial prompts at a target model, judges whether each guardrail held or broke, and (as it matures) scores the results into a repeatable mini-benchmark.
 
-> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — is now underway: the tool a model can be given, and a fixture file for it to read, are in place, with the model-driven tool-calling loop as the active work. See the [Roadmap](#roadmap) for what's built and what's next.
+> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — is underway: the benign tool-calling loop (5a) works end to end (a model is given a `read_file` tool, decides to call it, the result is fed back, and the model answers from it), and weaponizing that loop into an unauthorized tool call (5b) is the active work. See the [Roadmap](#roadmap) for what's built and what's next.
 
 ## Why this exists
 
@@ -17,6 +17,8 @@ Prompt injection and system-prompt leakage are among the most practical, least-u
 - **Scores** the run into an aggregate summary — total attacks, number leaked, and an overall leak rate.
 
 Making detection robust to obfuscated or encoded leaks (see [detection limits](#a-note-on-detection-limits)) and mapping results to industry taxonomies remain in progress.
+
+Separately, an experimental **tool-calling loop** demonstrates the full agentic cycle a model goes through — given a `read_file` tool, the model decides to call it, the harness executes it, and the result is fed back for the model to answer from. This is the benign foundation for the agentic attack scenario (Phase 5); it is a standalone spike, not yet wired into the main runner.
 
 ## Architecture
 
@@ -87,7 +89,7 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 4** — Scoring into a mini-benchmark (aggregate leak rate)
 - [ ] **Phase 4+** — Persist results to file (JSON) and map findings to OWASP LLM Top 10 and MITRE ATLAS
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
-  - [ ] **5a** — Benign tool-calling loop: give the model a `read_file` tool and have it call the tool correctly on a legitimate request *(tool function and `notes.txt` fixture built; model-driven call is the active work)*
+  - [x] **5a** — Benign tool-calling loop: a model is given a `read_file` tool, calls it on a legitimate request, and answers from the result fed back to it
   - [ ] **5b** — Weaponize it: an injected prompt drives an unauthorized tool call, with a detector that inspects the **action taken** rather than the text returned
 - [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
 
