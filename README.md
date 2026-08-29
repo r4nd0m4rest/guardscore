@@ -2,7 +2,7 @@
 
 A small, from-scratch red-team harness for probing the guardrails of large language models. `guardscore` fires a catalog of adversarial prompts at a target model, judges whether each guardrail held or broke, and (as it matures) scores the results into a repeatable mini-benchmark.
 
-> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — is underway: the benign tool-calling loop (5a) works end to end (a model is given a `read_file` tool, decides to call it, the result is fed back, and the model answers from it), and weaponizing that loop into an unauthorized tool call (5b) is the active work. See the [Roadmap](#roadmap) for what's built and what's next.
+> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — has its core demonstrated: a prompt-injection attack drives a model into an unauthorized tool call (reading a file outside its allowlist), and an action-level detector catches the violation by inspecting what the model *did* rather than what it *said*. This currently lives in a standalone spike; folding it into the main scored harness is the next step. See the [Roadmap](#roadmap) for what's built and what's next.
 
 ## Why this exists
 
@@ -18,7 +18,7 @@ Prompt injection and system-prompt leakage are among the most practical, least-u
 
 Making detection robust to obfuscated or encoded leaks (see [detection limits](#a-note-on-detection-limits)) and mapping results to industry taxonomies remain in progress.
 
-Separately, an experimental **tool-calling loop** demonstrates the full agentic cycle a model goes through — given a `read_file` tool, the model decides to call it, the harness executes it, and the result is fed back for the model to answer from. This is the benign foundation for the agentic attack scenario (Phase 5); it is a standalone spike, not yet wired into the main runner.
+Separately, a standalone **agentic-attack spike** (`tool_loop.py`) demonstrates the core of the Phase 5 scenario. A model is given a `read_file` tool restricted to an allowlist of authorized files. A prompt-injection attack induces the model to request a file *outside* that allowlist, and an **action-level detector** flags the unauthorized request — judging the tool call the model *made* rather than the text it returned. This distinction is the point: across repeated runs the model's final text is inconsistent (sometimes refusing, sometimes leaking, sometimes distorting the value), while the underlying unauthorized action is caught every time. The harness deliberately measures rather than blocks — it observes and scores the model's behavior, so the "secret" it exposes is always a harmless canary, never real data. This spike is not yet wired into the main scored runner.
 
 ## Architecture
 
@@ -90,7 +90,8 @@ The project is built in incremental phases, each adding one capability:
 - [ ] **Phase 4+** — Persist results to file (JSON) and map findings to OWASP LLM Top 10 and MITRE ATLAS
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
   - [x] **5a** — Benign tool-calling loop: a model is given a `read_file` tool, calls it on a legitimate request, and answers from the result fed back to it
-  - [ ] **5b** — Weaponize it: an injected prompt drives an unauthorized tool call, with a detector that inspects the **action taken** rather than the text returned
+  - [x] **5b** — Weaponize it (demonstrated in `tool_loop.py` spike): an injected prompt drives an unauthorized tool call, and an action-level detector flags it by inspecting the **action taken** rather than the text returned
+  - [ ] **5c** — Integrate the agentic attack and action-level detector into the main scored harness (`Attack` / `Result` / `run_attacks.py`) so it runs and scores alongside the leak attacks
 - [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
 
 ## A note on detection limits
