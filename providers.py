@@ -18,13 +18,6 @@ class OllamaProvider(Provider):
     def __init__(self, model):
         self.model = model  # remember which model this provider uses
 
-    # def chat(self, prompt):
-    #     response = ollama.chat(
-    #         model=self.model,
-    #         messages=[{"role": "user", "content": prompt}],
-    #     )
-    #     return response["message"]["content"]
-
     def chat(self, messages):
         response = ollama.chat(
             model=self.model, 
