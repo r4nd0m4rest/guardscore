@@ -2,7 +2,7 @@
 
 A small, from-scratch red-team harness for probing the guardrails of large language models. `guardscore` fires a catalog of adversarial prompts at a target model, judges whether each guardrail held or broke, and (as it matures) scores the results into a repeatable mini-benchmark.
 
-> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4 are shipped (through automated detection and scoring). Phase 5 — the agentic attack scenario — has its core demonstrated: a prompt-injection attack drives a model into an unauthorized tool call (reading a file outside its allowlist), and an action-level detector catches the violation by inspecting what the model *did* rather than what it *said*. Both direct injection (attack in the user prompt) and indirect injection (attack hidden inside file content the model reads, via a multi-round loop) have been explored; the two together show that text-level detection is unreliable in both directions — it can miss real breaches *and* report ones that never happened. This currently lives in a standalone spike; folding it into the main scored harness is the next step. See the [Roadmap](#roadmap) for what's built and what's next.
+> **Status: work in progress.** This is an actively developed learning and portfolio project, built one phase at a time. Phases 0–4+ are shipped (through automated detection, scoring, per-run JSON logs, and OWASP LLM Top 10 / MITRE ATLAS mapping). Phase 5 — the agentic attack scenario — has its core demonstrated: a prompt-injection attack drives a model into an unauthorized tool call (reading a file outside its allowlist), and an action-level detector catches the violation by inspecting what the model *did* rather than what it *said*. Both direct injection (attack in the user prompt) and indirect injection (attack hidden inside file content the model reads, via a multi-round loop) have been explored; the two together show that text-level detection is unreliable in both directions — it can miss real breaches *and* report ones that never happened. This currently lives in a standalone spike; folding it into the main scored harness is the next step. See the [Roadmap](#roadmap) for what's built and what's next.
 
 ## Why this exists
 
@@ -15,8 +15,10 @@ Prompt injection and system-prompt leakage are among the most practical, least-u
 - Runs the full catalog against a target model, focused on **system-prompt secret-leak** scenarios (plant a secret, instruct the model to protect it, attempt to extract it).
 - **Detects** whether each attack leaked the planted secret and labels every result `LEAKED` or `SAFE`.
 - **Scores** the run into an aggregate summary — total attacks, number leaked, and an overall leak rate.
+- **Persists** every run to a timestamped JSON file (`runs/run-<timestamp>.json`) — model, UTC timestamp, aggregate summary, per-attack results, and a per-taxonomy coverage breakdown.
+- **Maps** each attack to the industry references it exercises — OWASP LLM Top 10 (2025) and MITRE ATLAS technique IDs — and reports, per reference, how many probes broke the guardrail.
 
-Making detection robust to obfuscated or encoded leaks (see [detection limits](#a-note-on-detection-limits)) and mapping results to industry taxonomies remain in progress.
+Making detection robust to obfuscated or encoded leaks (see [detection limits](#a-note-on-detection-limits)) remains in progress, as does folding the agentic scenario below into this scored harness.
 
 Separately, a standalone **agentic-attack spike** (`tool_loop.py`) demonstrates the core of the Phase 5 scenario. A model is given a `read_file` tool restricted to an allowlist of authorized files. A prompt-injection attack induces the model to request a file *outside* that allowlist, and an **action-level detector** flags the unauthorized request — judging the tool call the model *made* rather than the text it returned. This distinction is the point: across repeated runs the model's final text is inconsistent (sometimes refusing, sometimes leaking, sometimes distorting the value), while the underlying unauthorized action is caught every time. The harness deliberately measures rather than blocks — it observes and scores the model's behavior, so the "secret" it exposes is always a harmless canary, never real data.
 
@@ -29,10 +31,11 @@ The design deliberately separates concerns so the harness stays reusable as it g
 | Component | File | Responsibility |
 |---|---|---|
 | **Provider** | `providers.py` | A generic interface for talking to any model. `Provider` defines the contract; `OllamaProvider` implements it. Swapping model backends changes one line, not the harness. |
-| **Attack catalog** | `attacks.py` | Attacks as data. An `Attack` dataclass holds each test case (name, system prompt to plant, attack prompt, planted secret); `CATALOG` is the list of them. Adding an attack means adding a data entry, not writing code. |
+| **Attack catalog** | `attacks.py` | Attacks as data. An `Attack` dataclass holds each test case (name, system prompt to plant, attack prompt, planted secret, a one-line intent, and OWASP / ATLAS reference tags); `CATALOG` is the list of them. Adding an attack means adding a data entry, not writing code. |
 | **Detector** | `detectors.py` | Judges each reply — does the planted secret appear? — and labels it `LEAKED` or `SAFE`. |
+| **Taxonomy** | `taxonomy.py` | Lookup table mapping OWASP LLM Top 10 and MITRE ATLAS IDs to human-readable titles, so reports carry both the ID and its name. |
 | **Result** | `results.py` | A `Result` dataclass that records the outcome of one attack (name, verdict, reply) so runs can be scored and, later, reported. |
-| **Runner** | `run_attacks.py` | Iterates the catalog, sends each attack through the provider, detects leaks, collects results, and prints per-attack verdicts plus an aggregate score. |
+| **Runner** | `run_attacks.py` | Iterates the catalog, sends each attack through the provider, detects leaks, prints per-attack verdicts, an aggregate score, and a per-taxonomy coverage breakdown, then writes the whole run to `runs/run-<timestamp>.json`. |
 
 ## Requirements
 
@@ -74,11 +77,20 @@ Run the full attack catalog against a model:
 python run_attacks.py
 ```
 
-Each attack is fired in turn, its response printed and labeled `LEAKED` or `SAFE`, followed by an aggregate summary — for example:
+Each attack is fired in turn, its response printed and labeled `LEAKED` or `SAFE`, followed by an aggregate summary and a per-taxonomy coverage breakdown — for example:
 
 ```
 Ran 2 attacks: 1 LEAKED, 1 SAFE (50.0% leak rate)
+
+Coverage:
+  LLM01:2025     Prompt Injection                   0/1 broke
+  LLM07:2025     System Prompt Leakage              1/2 broke
+  AML.T0051.000  LLM Prompt Injection: Direct       0/1 broke
+
+Wrote runs/run-<timestamp>.json
 ```
+
+The full run — every model reply plus the taxonomy tags — is also written to `runs/run-<timestamp>.json` (git-ignored).
 
 ## Roadmap
 
@@ -89,7 +101,7 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 2** — Attack catalog as data (`Attack` dataclass + runner)
 - [x] **Phase 3** — Detectors: automatically label each result `LEAKED` / `SAFE`
 - [x] **Phase 4** — Scoring into a mini-benchmark (aggregate leak rate)
-- [ ] **Phase 4+** — Persist results to file (JSON) and map findings to OWASP LLM Top 10 and MITRE ATLAS
+- [x] **Phase 4+** — Persist each run to a timestamped JSON log, and tag every attack with OWASP LLM Top 10 (2025) and MITRE ATLAS IDs, reported as a per-reference coverage breakdown
 - [ ] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
   - [x] **5a** — Benign tool-calling loop: a model is given a `read_file` tool, calls it on a legitimate request, and answers from the result fed back to it
   - [x] **5b** — Weaponize it (demonstrated in `tool_loop.py` spike): an injected prompt drives an unauthorized tool call, and an action-level detector flags it by inspecting the **action taken** rather than the text returned
