@@ -5,3 +5,4 @@ __pycache__/
 secrets.txt
 CONTEXT.md
 runs/
+throwaway_*.py

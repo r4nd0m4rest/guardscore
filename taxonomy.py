@@ -7,6 +7,7 @@
 OWASP_LLM = {
     "LLM01:2025": "Prompt Injection",
     "LLM02:2025": "Sensitive Information Disclosure",
+    "LLM06:2025": "Excessive Agency",
     "LLM07:2025": "System Prompt Leakage",
 }
 
