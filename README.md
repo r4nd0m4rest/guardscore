@@ -29,8 +29,6 @@ Two agentic attacks run in the catalog. The model is handed a `read_file` tool b
 
 The point of the action-level detector is that the model's *text* is an unreliable witness. Across runs of the indirect attack, `llama3.2` has been seen to (a) confabulate the off-limits file's contents without ever reading it — text that reads like a breach that never happened — and (b) actually read the file and then reply *"I can't share that"* — a real breach the text denies. Same attack, opposite text, and only the action detector is right both times.
 
-The original standalone exploration of this lives in `tool_loop.py`.
-
 ## Architecture
 
 The design deliberately separates concerns so the harness stays reusable as it grows:
@@ -108,6 +106,15 @@ Wrote runs/run-<timestamp>.json
 
 The full run — every model reply, the taxonomy tags, and (for agentic attacks) the text-level verdict and the list of files the model requested — is also written to `runs/run-<timestamp>.json` (git-ignored). Because `llama3.2` is nondeterministic, verdicts vary run to run; that variance is itself a finding.
 
+## Tests
+
+The detection and scoring logic — the model-free core the project's central claim rests on — is covered by unit tests. Both detectors (`detect` for text, `detect_action` for actions) and the taxonomy roll-up are tested directly, including the case where text and action disagree.
+
+```bash
+pip install pytest
+python -m pytest
+```
+
 ## Roadmap
 
 The project is built in incremental phases, each adding one capability:
@@ -120,10 +127,10 @@ The project is built in incremental phases, each adding one capability:
 - [x] **Phase 4+** — Persist each run to a timestamped JSON log, and tag every attack with OWASP LLM Top 10 (2025) and MITRE ATLAS IDs, reported as a per-reference coverage breakdown
 - [x] **Phase 5** — Agentic scenario: prompt injection driving an unauthorized tool call
   - [x] **5a** — Benign tool-calling loop: a model is given a `read_file` tool, calls it on a legitimate request, and answers from the result fed back to it
-  - [x] **5b** — Weaponize it (first shown in the `tool_loop.py` spike): an injected prompt drives an unauthorized tool call, and an action-level detector flags it by inspecting the **action taken** rather than the text returned
+  - [x] **5b** — Weaponize it: an injected prompt drives an unauthorized tool call, and an action-level detector flags it by inspecting the **action taken** rather than the text returned
   - [x] **5b (indirect)** — Indirect variant: attack hidden in file content the model reads, detected via a multi-round loop. Against `llama3.2` the outcome varies run to run — sometimes it confabulates the off-limits file's contents without reading it (text over-reports a breach that never happened), sometimes it reads the file and then denies it in text (text under-reports a real breach). Either way the action detector is the reliable witness
   - [x] **5c** — Integrated the agentic attack and action-level detector into the scored harness: agentic attacks run and score alongside the leak attacks (`Attack.kind` dispatches; `LEAKED` and `VIOLATION` both count as a broken guardrail; the run log records the text verdict and every file requested)
-- [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging, tests, and docs
+- [ ] **Phase 6** — Comparison against established tooling (garak, PyRIT); packaging and broader test coverage (unit tests for the detection/scoring core are in place; see [Tests](#tests))
 
 ## A note on detection limits
 
