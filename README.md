@@ -67,7 +67,7 @@ python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 
 # install dependencies
-pip install ollama
+pip install -r requirements.txt
 
 # make sure Ollama is running and the model is available
 ollama serve                    # in a separate terminal, or: brew services start ollama
